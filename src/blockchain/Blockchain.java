@@ -20,10 +20,11 @@ public class Blockchain {
 
     public static boolean validate() {
         for (int i=0; i<blockChain.size()-1; i++) {
-            if (!blockChain.get(i).getHashVal().equals(blockChain.get(i+1).getPrevBlockHashVal()))
+            String currHashValue = blockChain.get(i).getHashVal();
+            String prevHashValue = blockChain.get(i+1).getPrevBlockHashVal();
+            if (!currHashValue.equals(prevHashValue) || !Util.validateHashValue(currHashValue))
                 return false;
         }
-
         return true;
     }
 }

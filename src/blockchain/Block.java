@@ -1,17 +1,19 @@
 package blockchain;
 
 import java.util.Date;
+import java.util.Random;
 
 public class Block {
     int id;
     long timestamp;
     String hashVal;
     String prevBlockHashVal;
+    Long magicNumber;
 
     public Block(int id, String prevBlockHashVal) {
         this.id = id;
         this.timestamp = new Date().getTime();
-        this.hashVal = Util.applySha256(id+""+timestamp);
+        this.hashVal = generateHashValue(id+timestamp+prevBlockHashVal);
         this.prevBlockHashVal = prevBlockHashVal;
     }
 
@@ -52,7 +54,22 @@ public class Block {
         return "Block:\n" +
                 "Id: " + id + "\n" +
                 "Timestamp: " + timestamp + "\n" +
+                "Magic number: " + magicNumber + "\n" +
                 "Hash of the previous block:\n" + prevBlockHashVal + "\n" +
-                "Hash of the block:\n" + hashVal + "\n";
+                "Hash of the block:\n" + hashVal;
+    }
+
+    private String generateHashValue(String input) {
+        String result = "";
+        Random random = new Random();
+
+        while (true) {
+            magicNumber = random.nextLong();
+            input = input+magicNumber;
+            result = Util.applySha256(input);
+            if (Util.validateHashValue(result))
+                break;
+        }
+        return result;
     }
 }
