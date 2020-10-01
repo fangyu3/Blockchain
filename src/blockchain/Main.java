@@ -1,23 +1,18 @@
 package blockchain;
 
-import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Main {
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        System.out.print("Enter how many zeros the hash must start with: ");
-        String input = scanner.nextLine();
-
-        int numZero = input.length()==0?0:Integer.parseInt(input);
-
-        Util.setValidNumZero(numZero);
+        Blockchain myBlockchain = Blockchain.getInstance();
+        int poolSize = Runtime.getRuntime().availableProcessors();
+        ExecutorService executor = Executors.newFixedThreadPool(poolSize);
 
         for (int i=0; i<5; i++) {
-            long start = System.currentTimeMillis();
-            System.out.println(Blockchain.createBlock());
-            long end = System.currentTimeMillis();
-            System.out.println("Block was generating for " + (end-start)/1000 + " seconds\n");
+            executor.submit(new MiningTask(myBlockchain));
         }
-        scanner.close();
+
+        executor.shutdown();
     }
 }

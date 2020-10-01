@@ -36,4 +36,6 @@ public class Util {
     public static void setValidNumZero(int validNumZero) {
         numZero = validNumZero;
     }
+
+    public static int getValidNumZero() {return numZero;}
 }

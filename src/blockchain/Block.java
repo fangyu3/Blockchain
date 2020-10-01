@@ -4,11 +4,11 @@ import java.util.Date;
 import java.util.Random;
 
 public class Block {
-    int id;
-    long timestamp;
-    String hashVal;
-    String prevBlockHashVal;
-    Long magicNumber;
+    private int id;
+    private long timestamp;
+    private String hashVal;
+    private String prevBlockHashVal;
+    private Long magicNumber;
 
     public Block(int id, String prevBlockHashVal) {
         this.id = id;
