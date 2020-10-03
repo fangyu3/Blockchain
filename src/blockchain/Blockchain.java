@@ -2,44 +2,55 @@ package blockchain;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 // Singleton
 public class Blockchain {
     private static Blockchain instance;
     public List<Block> blockList;
+    private Util utility;
 
     private Blockchain() {
         blockList = new ArrayList<>();
+        utility = new Util();
     };
 
     public static Blockchain getInstance() {
-        if (instance == null)
-            return new Blockchain();
+        if (instance == null) {
+            instance = new Blockchain();
+            return instance;
+        }
 
         return instance;
     }
 
-    public Block createBlock() {
+    public void populate() {
 
-        int newBlockId = getLength() + 1;
-        String prevHashVal = newBlockId==1 ?
-                            "0":blockList.get(getLength()-1).getHashVal();
+        int poolSize = Runtime.getRuntime().availableProcessors();
+        ExecutorService executor = Executors.newFixedThreadPool(poolSize);
 
-        Block newBlock = new Block(newBlockId,prevHashVal);
-
-        // CRITICAL SECTION
-        synchronized (this){
-            if (validateNewBlock(newBlock))
-                blockList.add(newBlock);
-            else
-                newBlock = null;
-
-            return newBlock;
+        for (int i=0; i<5; i++) {
+            executor.submit(new MiningTask(instance));
         }
 
+        executor.shutdown();
+
+        try {
+            boolean terminated = executor.awaitTermination(60, TimeUnit.SECONDS);
+
+            if (terminated) {
+                System.out.println("The executor was successfully stopped");
+            } else {
+                System.out.println("Timeout elapsed before termination");
+            }
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
     }
 
-    private boolean validateNewBlock(Block newBlock) {
+    public boolean validateNewBlock(Block newBlock) {
 
         Block prevBlock = getLength()==0 ? null:blockList.get(getLength() - 1);
         String prevBlockHashVal = "0";
@@ -61,13 +72,17 @@ public class Blockchain {
         for (int i=0; i<blockList.size()-1; i++) {
             String currHashValue = blockList.get(i).getHashVal();
             String prevHashValue = blockList.get(i+1).getPrevBlockHashVal();
-            if (!currHashValue.equals(prevHashValue) || !Util.validateHashValue(currHashValue))
+            if (!currHashValue.equals(prevHashValue) || !utility.validateHashValue(currHashValue))
                 return false;
         }
         return true;
     }
 
-    private int getLength() {
+    public int getLength() {
         return blockList.size();
+    }
+
+    public List<Block> getBlockList() {
+        return blockList;
     }
 }

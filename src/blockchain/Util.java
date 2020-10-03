@@ -9,7 +9,7 @@ public class Util {
     private static int numZero=0;
 
     /* Applies Sha256 to a string and returns a hash. */
-    public static String applySha256(String input) {
+    public String applySha256(String input) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             /* Applies sha256 to our input */
@@ -26,16 +26,25 @@ public class Util {
         }
     }
 
-    public static boolean validateHashValue(String hashValue) {
+    public boolean validateHashValue(String hashValue) {
         Pattern pattern = Pattern.compile("0{" + numZero + "}.*");
         Matcher matcher = pattern.matcher(hashValue);
 
         return matcher.matches();
     }
 
-    public static void setValidNumZero(int validNumZero) {
-        numZero = validNumZero;
+    public void updateValidNumZero(long timeElapsed) {
+        if (timeElapsed < 15)
+            System.out.println("N was increased to " + ++numZero);
+        else if (timeElapsed >30)
+            System.out.println("N was increased to " + --numZero);
+        else
+            System.out.println("N stays the same");
+
+        return;
     }
 
-    public static int getValidNumZero() {return numZero;}
+    public int getNumZero() {
+        return numZero;
+    }
 }
