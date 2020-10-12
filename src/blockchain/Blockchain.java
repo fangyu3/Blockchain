@@ -1,7 +1,9 @@
 package blockchain;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -11,34 +13,61 @@ public class Blockchain {
     private static Blockchain instance;
     public List<Block> blockList;
     private Util utility;
+    private Queue<String> msgQueue;
+    private List<String> tempMsgList;
+    private transient Boolean acceptingMsg;
 
     private Blockchain() {
         blockList = new ArrayList<>();
         utility = new Util();
-    };
+        msgQueue = new LinkedList<>();
+        tempMsgList = new ArrayList<>();
+        acceptingMsg = true;
+    }
 
     public static Blockchain getInstance() {
         if (instance == null) {
             instance = new Blockchain();
             return instance;
         }
-
         return instance;
     }
 
-    public void populate() {
+    public List<String> getTempMsgList() {
+        return tempMsgList;
+    }
+
+    public boolean getAcceptingMsgStatus() {
+        return acceptingMsg;
+    }
+
+    public void isAcceptingMsg(Boolean acceptingMsg) {
+        this.acceptingMsg = acceptingMsg;
+    }
+
+    public void startApp() {
 
         int poolSize = Runtime.getRuntime().availableProcessors();
-        ExecutorService executor = Executors.newFixedThreadPool(poolSize);
+        ExecutorService miningTaskExecutor = Executors.newFixedThreadPool(poolSize);
+        ExecutorService msgTaskExecutor = Executors.newFixedThreadPool(poolSize);
 
+        // Blockchain starts to accept messages from users
         for (int i=0; i<5; i++) {
-            executor.submit(new MiningTask(instance));
+            msgTaskExecutor.submit(new ReceiveMsgTask(instance));
         }
 
-        executor.shutdown();
+        // Blockchain starts to accept block creation tasks from miners
+        for (int i=0; i<5; i++) {
+            miningTaskExecutor.submit(new MiningTask(instance));
+        }
+
+        miningTaskExecutor.shutdown();
+        msgTaskExecutor.shutdown();
 
         try {
-            boolean terminated = executor.awaitTermination(60, TimeUnit.SECONDS);
+            boolean terminated =
+                    miningTaskExecutor.awaitTermination(60, TimeUnit.SECONDS)
+                    && msgTaskExecutor.awaitTermination(60, TimeUnit.SECONDS);
 
             if (terminated) {
                 System.out.println("The executor was successfully stopped");
@@ -84,5 +113,19 @@ public class Blockchain {
 
     public List<Block> getBlockList() {
         return blockList;
+    }
+
+    public void addToMsgQueue(String msg) {
+        msgQueue.add(msg);
+    }
+
+    public void emptyMsgQueue() {
+        while(!msgQueue.isEmpty()) {
+            tempMsgList.add(msgQueue.poll());
+        }
+    }
+
+    public void emptyTempMsgList() {
+        tempMsgList.clear();
     }
 }

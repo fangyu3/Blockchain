@@ -13,7 +13,7 @@ public class MiningTask implements Runnable{
         try {
             while(!miner.createBlock()) {
                 ;
-            };
+            }
         }
         catch (Exception e) {
             System.out.println(e.getMessage());

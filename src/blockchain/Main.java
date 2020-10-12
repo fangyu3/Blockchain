@@ -3,6 +3,6 @@ package blockchain;
 public class Main {
     public static void main(String[] args) {
         Blockchain myBlockchain = Blockchain.getInstance();
-        myBlockchain.populate();
+        myBlockchain.startApp();
     }
 }

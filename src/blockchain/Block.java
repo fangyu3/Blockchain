@@ -1,6 +1,8 @@
 package blockchain;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class Block {
     private int id;
@@ -10,14 +12,17 @@ public class Block {
     private long magicNumber;
     private long minerId;
     private Util utility;
+    private List<String> data;
 
-    public Block(int id,String prevBlockHashVal,long magicNumber,long minerId) {
+    public Block(int id,String prevBlockHashVal,long magicNumber,long minerId,List<String> data) {
         this.id = id;
         this.prevBlockHashVal = prevBlockHashVal;
         this.magicNumber = magicNumber;
         this.minerId = minerId;
         this.timestamp = new Date().getTime();
         this.utility = new Util();
+        this.data = new ArrayList<>();
+        setData(data);
         this.hashVal = generateHashValue();
     }
 
@@ -53,6 +58,15 @@ public class Block {
         this.prevBlockHashVal = prevBlockHashVal;
     }
 
+    public List<String> getData() {
+        return data;
+    }
+
+    private void setData(List<String> data) {
+        if (data != null)
+            data.stream().forEach(e->this.data.add(e));
+    }
+
     @Override
     public String toString() {
         return "Block:\n" +
@@ -66,14 +80,17 @@ public class Block {
 
     private String generateHashValue() {
         String result = "";
+        String blockDataStrValue = "";
+        if (!data.isEmpty())
+            blockDataStrValue = data.stream().reduce((x,y)->x+" "+y).get();
+
         while (true) {
-            result = utility.applySha256(id+timestamp+prevBlockHashVal+minerId+magicNumber);
+            result = utility.applySha256(id+timestamp+prevBlockHashVal+minerId+magicNumber+blockDataStrValue);
             if (utility.validateHashValue(result))
                 break;
             magicNumber++;
         }
         return result;
     }
-
 
 }
