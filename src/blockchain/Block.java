@@ -3,6 +3,7 @@ package blockchain;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 
 public class Block {
     private int id;
@@ -14,15 +15,16 @@ public class Block {
     private Util utility;
     private List<String> data;
 
-    public Block(int id,String prevBlockHashVal,long magicNumber,long minerId,List<String> data) {
+    public Block(int id,String prevBlockHashVal,List<String> data) {
+        Random random = new Random();
+
         this.id = id;
         this.prevBlockHashVal = prevBlockHashVal;
-        this.magicNumber = magicNumber;
-        this.minerId = minerId;
         this.timestamp = new Date().getTime();
         this.utility = new Util();
-        this.data = new ArrayList<>();
-        setData(data);
+        this.minerId = Thread.currentThread().getId();
+        this.magicNumber = random.nextLong();
+        this.data = data;
         this.hashVal = generateHashValue();
     }
 
@@ -59,12 +61,7 @@ public class Block {
     }
 
     public List<String> getData() {
-        return data;
-    }
-
-    private void setData(List<String> data) {
-        if (data != null)
-            data.stream().forEach(e->this.data.add(e));
+        return new ArrayList<>(data);
     }
 
     @Override
@@ -80,17 +77,14 @@ public class Block {
 
     private String generateHashValue() {
         String result = "";
-        String blockDataStrValue = "";
-        if (!data.isEmpty())
-            blockDataStrValue = data.stream().reduce((x,y)->x+" "+y).get();
-
+        String dataStrValue = data.stream().reduce((x,y)->x+y).orElse("");
+        String hashKey = id+timestamp+prevBlockHashVal+minerId+dataStrValue;
         while (true) {
-            result = utility.applySha256(id+timestamp+prevBlockHashVal+minerId+magicNumber+blockDataStrValue);
+            result = utility.applySha256(hashKey+magicNumber);
             if (utility.validateHashValue(result))
                 break;
             magicNumber++;
         }
         return result;
     }
-
 }
