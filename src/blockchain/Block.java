@@ -1,9 +1,14 @@
 package blockchain;
 
+import blockchain.user.Message;
+import blockchain.util.HashUtil;
+
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 public class Block {
     private int id;
@@ -12,17 +17,17 @@ public class Block {
     private String prevBlockHashVal;
     private long magicNumber;
     private long minerId;
-    private Util utility;
-    private List<String> data;
+    private HashUtil utility;
+    private List<Message> data;
 
-    public Block(int id,String prevBlockHashVal,List<String> data) {
+    public Block(int id,String prevBlockHashVal,List<Message> data,long minerId) {
         Random random = new Random();
 
         this.id = id;
         this.prevBlockHashVal = prevBlockHashVal;
         this.timestamp = new Date().getTime();
-        this.utility = new Util();
-        this.minerId = Thread.currentThread().getId();
+        this.utility = new HashUtil();
+        this.minerId = minerId;
         this.magicNumber = random.nextLong();
         this.data = data;
         this.hashVal = generateHashValue();
@@ -60,7 +65,7 @@ public class Block {
         this.prevBlockHashVal = prevBlockHashVal;
     }
 
-    public List<String> getData() {
+    public List<Message> getData() {
         return new ArrayList<>(data);
     }
 
@@ -77,8 +82,7 @@ public class Block {
 
     private String generateHashValue() {
         String result = "";
-        String dataStrValue = data.stream().reduce((x,y)->x+y).orElse("");
-        String hashKey = id+timestamp+prevBlockHashVal+minerId+dataStrValue;
+        String hashKey = id+timestamp+prevBlockHashVal+minerId+getDataStrValue();
         while (true) {
             result = utility.applySha256(hashKey+magicNumber);
             if (utility.validateHashValue(result))
@@ -86,5 +90,14 @@ public class Block {
             magicNumber++;
         }
         return result;
+    }
+
+    private String getDataStrValue() {
+        return data.stream()
+                .flatMap(e->e.getData().stream())
+                .collect(Collectors.toList())
+                .stream()
+                .map(e->new String(e, StandardCharsets.UTF_8))
+                .reduce((x,y)->x+y).orElse("");
     }
 }

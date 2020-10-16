@@ -1,10 +1,10 @@
-package blockchain;
+package blockchain.util;
 
 import java.security.MessageDigest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Util {
+public class HashUtil {
 
     private static int numZero=0;
 
