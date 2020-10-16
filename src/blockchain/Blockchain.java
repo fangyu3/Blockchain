@@ -1,58 +1,75 @@
 package blockchain;
 
-import blockchain.user.Message;
-import blockchain.user.MiningTask;
-import blockchain.util.HashUtil;
-import blockchain.util.MessageVerificationUtil;
+import blockchain.user.Miner;
+import blockchain.user.Transaction;
+import blockchain.util.TransactionVerificationUtil;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-// Singleton
 public class Blockchain {
-    private static Blockchain instance;
-    public List<Block> blockList;
-    private HashUtil utility;
-    private Queue<Message> msgQueue;
-    private List<Message> tempMsgList;
-    private volatile Boolean acceptingMsg;
 
-    private Blockchain() {
-        blockList = new ArrayList<>();
-        utility = new HashUtil();
-        msgQueue = new LinkedList<>();
-        tempMsgList = new ArrayList<>();
-        acceptingMsg = true;
+    private static List<Block> entries;
+    private static List<Transaction> newBlockTransactions;
+    private static Queue<Transaction> transactionsQueue;
+    private static volatile boolean acceptNewTrx;
+    private static Map<Long, Miner> registeredMiners;
 
-    };
-
-    public static Blockchain getInstance() {
-        if (instance == null) {
-            instance = new Blockchain();
-            return instance;
-        }
-
-        return instance;
+    static {
+        entries = new ArrayList<>();
+        newBlockTransactions = new ArrayList<>();
+        transactionsQueue = new LinkedList<>();
+        registeredMiners = new HashMap<>();
+        acceptNewTrx = true;
     }
 
-    public void populate() {
+    public static boolean isAcceptNewTrx() {
+        return acceptNewTrx;
+    }
+
+    public static int getLength() {
+        return entries.size();
+    }
+
+    public static List<Block> getEntries() {
+        return new ArrayList<>(entries);
+    }
+
+    public static Map<Long, Miner> getRegisteredMiners() {
+        return new HashMap<>(registeredMiners);
+    }
+
+    public static List<Transaction> getNewBlockTransactions() {
+        return new ArrayList<>(newBlockTransactions);
+    }
+
+    public static void addMiner(Miner newMiner) {
+        registeredMiners.put(newMiner.getId(),newMiner);
+    }
+
+    public static void addBlock(Block newBlock) {
+        entries.add(newBlock);
+    }
+
+    public static void addTransaction(Transaction newTransaction) {
+        transactionsQueue.add(newTransaction);
+    }
+
+    public static void startApp() {
         int poolSize = Runtime.getRuntime().availableProcessors();
         ExecutorService executor = Executors.newFixedThreadPool(poolSize);
 
-        for (int i=0; i<5; i++) {
-            executor.submit(new MiningTask(instance));
+        for (int i=0; i<poolSize; i++) {
+            executor.submit(new CreateMinerTask());
         }
 
         executor.shutdown();
 
         try {
-            boolean terminated = executor.awaitTermination(60, TimeUnit.SECONDS);
+            boolean terminated = executor.awaitTermination(15, TimeUnit.SECONDS);
 
             if (terminated) {
                 System.out.println("The executor was successfully stopped");
@@ -64,9 +81,20 @@ public class Blockchain {
         }
     }
 
-    public boolean validateNewBlock(Block newBlock) {
+    public static void resetTrxQueue() {
+        acceptNewTrx = false;
 
-        Block prevBlock = getLength()==0 ? null:blockList.get(getLength() - 1);
+        newBlockTransactions.clear();
+        while(!transactionsQueue.isEmpty()) {
+            newBlockTransactions.add(transactionsQueue.poll());
+        }
+
+        acceptNewTrx = true;
+    }
+
+    public static boolean validateNewBlock(Block newBlock) {
+
+        Block prevBlock = getLength()==0 ? null:entries.get(getLength() - 1);
         String prevBlockHashVal = "0";
         int prevBlockId = 0;
 
@@ -82,73 +110,38 @@ public class Blockchain {
             return false;
         }
 
+        return validateTransactions(newBlock);
+    }
+
+    private static boolean validateTransactions(Block newBlock) {
         // Check public/private key matches for all messages in new block
         try {
-            for (Message msg : newBlock.getData()) {
-                if (!MessageVerificationUtil
-                        .verifySignature(msg.getData().get(0), msg.getData().get(1), msg.getPublicKey())) {
+            for (Transaction trx : newBlock.getTransactions()) {
+                if (!TransactionVerificationUtil
+                        .verifySignature(trx.getData().get(0),
+                                trx.getData().get(1),
+                                trx.getPublicKey()))
+                {
                     System.out.println("Key match fail");
                     return false;
                 }
             }
-        } catch (Exception e) {
-            System.out.println("Key verification exception in blockchain");
+
+            // Check if msg ids are valid
+            List<Block> tempList = new ArrayList<>(entries);
+            tempList.add(newBlock);
+            List<Transaction> transactions = tempList.stream()
+                    .flatMap(e->e.getTransactions().stream())
+                    .collect(Collectors.toList());
+
+            for (int i=transactions.size()-1; i>0; i--) {
+                if (transactions.get(i).getTransactionId() < transactions.get(i-1).getTransactionId())
+                    return false;
+            }
         }
-
-        // Check if msg ids are valid
-        List<Block> tempList = new ArrayList<>(blockList);
-        tempList.add(newBlock);
-        List<Message> messages = tempList.stream()
-                                    .flatMap(e->e.getData().stream())
-                                    .collect(Collectors.toList());
-
-        for (int i=messages.size()-1; i>0; i--) {
-            if (messages.get(i).getMsgId() < messages.get(i-1).getMsgId())
-                return false;
-        }
-
-        return true;
-    }
-
-    public boolean validateBlockchain() {
-        for (int i=0; i<blockList.size()-1; i++) {
-            String currHashValue = blockList.get(i).getHashVal();
-            String prevHashValue = blockList.get(i+1).getPrevBlockHashVal();
-            if (!currHashValue.equals(prevHashValue) || !utility.validateHashValue(currHashValue))
-                return false;
+        catch (Exception e) {
+            System.out.println("Transaction verification exception in blockchain");
         }
         return true;
     }
-
-    public int getLength() {
-        return blockList.size();
-    }
-
-    public List<Block> getBlockList() {
-        return blockList;
-    }
-
-    public void addToMsgQueue(Message msg) {
-        msgQueue.add(msg);
-    }
-
-    public List<Message> getTempMsgList() {
-        return new ArrayList<>(tempMsgList);
-    }
-
-    public void isAcceptingMsg(boolean status) {
-        acceptingMsg = status;
-    }
-
-    public boolean getAcceptingMsgStatus() {
-        return acceptingMsg;
-    }
-
-    public void resetMsgQueue() {
-        tempMsgList.clear();
-        while(!msgQueue.isEmpty()) {
-            tempMsgList.add(msgQueue.poll());
-        }
-    }
-
 }

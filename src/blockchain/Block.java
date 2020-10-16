@@ -1,14 +1,12 @@
 package blockchain;
 
-import blockchain.user.Message;
+import blockchain.user.Transaction;
 import blockchain.util.HashUtil;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
-import java.util.stream.Collectors;
 
 public class Block {
     private int id;
@@ -18,71 +16,51 @@ public class Block {
     private long magicNumber;
     private long minerId;
     private HashUtil utility;
-    private List<Message> data;
+    private List<Transaction> transactions;
+    private String creatorMsg;
 
-    public Block(int id,String prevBlockHashVal,List<Message> data,long minerId) {
-        Random random = new Random();
-
+    public Block(int id, String prevBlockHashVal, List<Transaction> transactions, long minerId) {
         this.id = id;
-        this.prevBlockHashVal = prevBlockHashVal;
         this.timestamp = new Date().getTime();
-        this.utility = new HashUtil();
+        this.prevBlockHashVal = prevBlockHashVal;
         this.minerId = minerId;
-        this.magicNumber = random.nextLong();
-        this.data = data;
-        this.hashVal = generateHashValue();
-    }
+        this.utility = new HashUtil();
+        this.transactions = transactions;
+        this.creatorMsg = "miner" + minerId + " gets 100 VC";
 
-    public int getId() {
-        return id;
-    }
+        String hashKey = this.id +
+                this.timestamp +
+                this.prevBlockHashVal +
+                this.minerId +
+                this.transactions.stream()
+                        .map(e->e.toString())
+                        .reduce((x,y)->(x+y)) +
+                this.creatorMsg;
 
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public long getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(long timestamp) {
-        this.timestamp = timestamp;
+        this.hashVal = generateHashValue(hashKey);
     }
 
     public String getHashVal() {
         return hashVal;
     }
 
-    public void setHashVal(String hashVal) {
-        this.hashVal = hashVal;
+    public int getId() {
+        return id;
+    }
+
+    public List<Transaction> getTransactions() {
+        return new ArrayList<>(transactions);
     }
 
     public String getPrevBlockHashVal() {
         return prevBlockHashVal;
     }
 
-    public void setPrevBlockHashVal(String prevBlockHashVal) {
-        this.prevBlockHashVal = prevBlockHashVal;
-    }
-
-    public List<Message> getData() {
-        return new ArrayList<>(data);
-    }
-
-    @Override
-    public String toString() {
-        return "Block:\n" +
-                "Created by miner # " + minerId + "\n" +
-                "Id: " + id + "\n" +
-                "Timestamp: " + timestamp + "\n" +
-                "Magic number: " + magicNumber + "\n" +
-                "Hash of the previous block:\n" + prevBlockHashVal + "\n" +
-                "Hash of the block:\n" + hashVal;
-    }
-
-    private String generateHashValue() {
+    private String generateHashValue(String hashKey) {
         String result = "";
-        String hashKey = id+timestamp+prevBlockHashVal+minerId+getDataStrValue();
+        Random random = new Random();
+        this.magicNumber = random.nextLong();
+
         while (true) {
             result = utility.applySha256(hashKey+magicNumber);
             if (utility.validateHashValue(result))
@@ -92,12 +70,15 @@ public class Block {
         return result;
     }
 
-    private String getDataStrValue() {
-        return data.stream()
-                .flatMap(e->e.getData().stream())
-                .collect(Collectors.toList())
-                .stream()
-                .map(e->new String(e, StandardCharsets.UTF_8))
-                .reduce((x,y)->x+y).orElse("");
+    @Override
+    public String toString() {
+        return "Block:\n" +
+                "Created by miner # " + minerId + "\n" +
+                creatorMsg + "\n" +
+                "Id: " + id + "\n" +
+                "Timestamp: " + timestamp + "\n" +
+                "Magic number: " + magicNumber + "\n" +
+                "Hash of the previous block:\n" + prevBlockHashVal + "\n" +
+                "Hash of the block:\n" + hashVal;
     }
 }

@@ -5,7 +5,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class HashUtil {
-
     private static int numZero=0;
 
     /* Applies Sha256 to a string and returns a hash. */
@@ -34,12 +33,21 @@ public class HashUtil {
     }
 
     public void updateValidNumZero(long timeElapsed) {
-        if (timeElapsed < 15)
+
+        if (numZero == 4) {
+            numZero = 0;
+            System.out.println("N was reset to 0");
+        }
+        else if (timeElapsed < 2)
             System.out.println("N was increased to " + ++numZero);
-        else if (timeElapsed >30)
-            System.out.println("N was increased to " + --numZero);
+        else if (timeElapsed >4) {
+            numZero -= 2;
+            System.out.println("N was decreased to " + numZero);
+        }
         else
             System.out.println("N stays the same");
+
+        System.out.println("");
 
         return;
     }
