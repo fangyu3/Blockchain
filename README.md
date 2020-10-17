@@ -1,4 +1,4 @@
-# Learn concept of Blockchain by building one
+# My own simple blockchain
 
 An app that simulates the transactions of cryptocurrency and how blockchain works
 
